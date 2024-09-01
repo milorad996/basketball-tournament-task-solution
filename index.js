@@ -150,4 +150,41 @@ function simulateTournament() {
     return finalStandings;
 }
 
-console.log(simulateTournament());
+const finalStandings = simulateTournament();
+
+function formHat(finalStandings) {
+    const hats = {
+        D: [],
+        E: [],
+        F: [],
+        G: []
+    };
+
+    const allTeams = [];
+    ['A', 'B', 'C'].forEach(groupKey => {
+        finalStandings[groupKey].forEach((team, idx) => {
+            allTeams.push({ ...team, group: groupKey });
+        });
+    });
+
+    allTeams.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.pointDifference !== a.pointDifference) return b.pointDifference - a.pointDifference;
+        return b.pointsScored - a.pointsScored;
+    });
+
+    hats.D.push(allTeams[0].team, allTeams[1].team);
+    hats.E.push(allTeams[2].team, allTeams[3].team);
+    hats.F.push(allTeams[4].team, allTeams[5].team);
+    hats.G.push(allTeams[6].team, allTeams[7].team);
+
+    console.log('Šeširi:');
+    Object.keys(hats).forEach(hat => {
+        console.log(`Šešir ${hat}:`);
+        hats[hat].forEach(team => console.log(`    ${team}`));
+    });
+
+    return hats;
+}
+
+console.log(formHat(finalStandings));
