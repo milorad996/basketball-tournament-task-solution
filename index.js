@@ -187,4 +187,152 @@ function formHat(finalStandings) {
     return hats;
 }
 
-console.log(formHat(finalStandings));
+function drawQuarterfinals(hats, finalStandings) {
+    const matchups = [];
+
+    function playedInSameGroup(team1, team2) {
+        let group1, group2;
+        ['A', 'B', 'C'].forEach(groupKey => {
+            finalStandings[groupKey].forEach(team => {
+                if (team.team === team1) group1 = groupKey;
+                if (team.team === team2) group2 = groupKey;
+            });
+        });
+        return group1 === group2;
+    }
+
+    function pairTeams(hat1, hat2) {
+        const availableTeams1 = [...hat1];
+        const availableTeams2 = [...hat2];
+        while (availableTeams1.length && availableTeams2.length) {
+            const team1 = availableTeams1.splice(Math.floor(Math.random() * availableTeams1.length), 1)[0];
+            let team2 = availableTeams2.splice(Math.floor(Math.random() * availableTeams2.length), 1)[0];
+
+            while (playedInSameGroup(team1, team2) && availableTeams2.length) {
+                availableTeams2.push(team2);
+                team2 = availableTeams2.splice(Math.floor(Math.random() * availableTeams2.length), 1)[0];
+            }
+
+            matchups.push({ team1, team2 });
+        }
+    }
+
+    pairTeams(hats.D, hats.G);
+    pairTeams(hats.E, hats.F);
+
+    console.log('Eliminaciona faza:');
+    matchups.forEach(match => {
+        console.log(`${match.team1} - ${match.team2}`);
+    });
+
+    return matchups;
+}
+
+const hats = formHat(finalStandings);
+
+const quarterFinals = drawQuarterfinals(hats, finalStandings);
+
+function drawSemifinals(quarterFinals) {
+    const semifinalMatchups = [];
+    const availablePairs = [...quarterFinals];
+    while (availablePairs.length) {
+        const pair1 = availablePairs.splice(Math.floor(Math.random() * availablePairs.length), 1)[0];
+        const pair2 = availablePairs.splice(Math.floor(Math.random() * availablePairs.length), 1)[0];
+        semifinalMatchups.push({ pair1, pair2 });
+    }
+
+    console.log('Polufinale:');
+    semifinalMatchups.forEach(matchup => {
+        console.log(`${matchup.pair1.team1} / ${matchup.pair1.team2} - ${matchup.pair2.team1} / ${matchup.pair2.team2}`);
+    });
+
+    return semifinalMatchups;
+}
+
+const semifinals = drawSemifinals(quarterFinals);
+
+function updateForm(team, previousForm, score, opponentScore) {
+    const pointDifference = score - opponentScore;
+    let newForm = previousForm;
+
+    if (score > opponentScore) {
+        newForm += 1 + pointDifference * 0.1;
+    } else {
+        newForm -= 1 + Math.abs(pointDifference) * 0.1;
+    }
+
+    return newForm;
+}
+
+function simulateEliminationRound(matchups, form, exibitions, rankings) {
+    const results = [];
+
+    matchups.forEach(match => {
+        const team1 = match.team1;
+        const team2 = match.team2;
+        const form1 = form[team1];
+        const form2 = form[team2];
+
+        const result = simulateGame(team1, team2, form1, form2);
+        console.log(`Rezultat utakmice ${result.team1.name} - ${result.team2.name}: ${result.team1.points}:${result.team2.points}`);
+
+        form[team1] = updateForm(team1, form[team1], result.team1.points, result.team2.points);
+        form[team2] = updateForm(team2, form[team2], result.team2.points, result.team1.points);
+
+        results.push(result);
+    });
+
+    return results;
+}
+
+function runEliminationPhase(quarterFinals, form, exibitions, rankings) {
+    console.log('Četvrtfinale:');
+    const quarterFinalResults = simulateEliminationRound(quarterFinals, form, exibitions, rankings);
+
+    const semiFinalMatchups = [
+        { team1: quarterFinalResults[0].team1.name, team2: quarterFinalResults[1].team1.name },
+        { team1: quarterFinalResults[2].team1.name, team2: quarterFinalResults[3].team1.name }
+    ];
+
+    console.log('Polufinale:');
+    const semiFinalResults = simulateEliminationRound(semiFinalMatchups, form, exibitions, rankings);
+
+    const thirdPlaceMatchup = {
+        team1: semiFinalResults[0].team2.name,
+        team2: semiFinalResults[1].team2.name
+    };
+
+    const finalMatchup = {
+        team1: semiFinalResults[0].team1.name,
+        team2: semiFinalResults[1].team1.name
+    };
+
+    console.log('Utakmica za treće mesto:');
+    const thirdPlaceResult = simulateEliminationRound([thirdPlaceMatchup], form, exibitions, rankings)[0];
+
+    console.log('Finale:');
+    const finalResult = simulateEliminationRound([finalMatchup], form, exibitions, rankings)[0];
+
+    console.log('Medalje:');
+    console.log(`1. ${finalResult.team1.name}`);
+    console.log(`2. ${finalResult.team2.name}`);
+    console.log(`3. ${thirdPlaceResult.team1.name}`);
+}
+
+function initializeFormAfterGroupStageWithPrevious(exibitions) {
+    const form = {};
+
+    Object.keys(groups).forEach(groupKey => {
+        const teams = groups[groupKey];
+
+        teams.forEach(team => {
+            form[team.ISOCode] = calculateInitialForm(exibitions[team.ISOCode]);
+        });
+    });
+
+    return form;
+}
+
+const formWithPrevious = initializeFormAfterGroupStageWithPrevious(exibitions);
+runEliminationPhase(quarterFinals, formWithPrevious, exibitions, rankings);
+
